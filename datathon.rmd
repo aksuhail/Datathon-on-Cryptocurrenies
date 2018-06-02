@@ -1,0 +1,196 @@
+---
+title: "datathon(crpt)"
+author: "Suhail AK"
+date: "27 April 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+reading csv
+
+
+
+```{r}
+library(data.table)
+#install.packages("data.table",repos = "http://cran.rstudio.com")
+getwd()
+library(dplyr)
+
+
+```
+
+
+```{r}
+library(data.table)
+
+
+library(dplyr)
+
+library(tseries)
+
+library(forecast)
+
+library(caret)
+
+library(gridExtra)
+
+
+
+crypto <- fread("datathon.csv")
+
+
+data <- crypto
+
+head(data)
+
+str(data)
+
+total <- data %>%  group_by(refID_coin ) %>%  summarise(count= n())
+
+head(total,10)
+
+ 
+
+files  <- list.files("datathon_csv",pattern = '\\.csv')
+
+head(files)
+
+files[21]
+
+
+# TO get the path of the location where all the files for each Cryptocurrency is stored
+
+url <- "datathon_csv"
+
+ 
+
+crypto_forecast <- data.frame()
+
+ 
+
+for (i in 21){ #nrow(files)
+
+crypto_id <- gsub("price_data", '', files[i])
+
+crypto_data <- read.csv(paste(url,files[i],sep = "/"), header = TRUE)
+
+orginal <- tail(crypto_data$price,7)
+
+
+ # Now we will create a time series object
+
+ crypto_price <- ts(crypto_data$price[1:15191], start= c(1,1), frequency = 288)
+
+#fit <- decompose(crypto_price) #to check the Trend, seasonality and Error in the Time Series object
+
+ 
+
+ # by using Auto Arima
+
+ #fit1 <- auto.arima(crypto_price)
+
+#a <- forecast(fit1, h=7)
+
+ 
+
+ # by using exponential smoothening
+
+fit2 <- ets(crypto_price)
+
+b <- forecast(fit2, h=1)
+
+
+ # by using neural network
+
+#fit3 <- nnetar(crypto_price)
+
+#c <- forecast(fit3, h =7)
+
+
+ df <- data.frame(orginal,b$mean) #a$mean, b$mean, c$mean)
+
+crypto_forecast <- bind_rows(crypto_forecast, df)
+
+}
+
+View(crypto_forecast)
+
+```
+
+
+
+
+```{r}
+crypto_final <- crypto_forecast
+
+currency_name <- read.csv("matrix_one_file/CSVData_coin.csv",header = FALSE)
+
+ 
+
+currency_id <- c()
+
+for(i in currency_name$V2[1:19]){
+
+  for(j in 1:7){
+
+    currency_id <- append(currency_id,i)}
+
+}
+
+#for last 7value
+for(i in currency_name$V2[21]){
+
+  for(j in 1:7){
+
+    currency_id <- append(currency_id,i)}
+
+}
+
+crypto_final <- cbind(crypto_final, currency_id)
+
+names(crypto_final) <- c("Original_Value", "ARIMA_Prediction", "ETS_Prediction","Neural_Network_Prediction", "Currency_Name"  )
+
+crypto_final <- crypto_final[,c(5,1:4)]
+View(crypto_final)
+
+write.csv(crypto_final,file = "final_prediction.csv")
+
+
+final <- read.csv("final_prediction.csv")
+View(final)
+
+#checking for accuracy
+library(dplyr)
+
+
+final %>% group_by(Currency_Name) %>% summarise(total=sum(Original_Value),ARIMA_accuracy_percent=sum(ARIMA_Prediction)/total*100,ETS_percent=sum(ETS_Prediction)/total*100,Neural_percent=sum(Neural_Network_Prediction)/total*100) %>% select(-total)
+
+
+
+```
+
+Plotting
+
+```{r}
+
+crypto_final1 <- subset(crypto_final,crypto_final$Currency_Name=="bitcoin")
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
